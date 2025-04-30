@@ -10,8 +10,7 @@ authors = [
 dependencies = [
   "flet==0.27.6",
   "pytz==2025.2",
-  "sqlalchemy==2.0.40",
-  "sqlite3"  # o cualquier otra backend que estés usando
+  "sqlalchemy==2.0.40"
 ]
 
 [tool.flet]
