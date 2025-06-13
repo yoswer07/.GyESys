@@ -1,4 +1,5 @@
 import flet as ft
+from category_article_view import CategoryArticleView
 from main_view import mainView
 from sidebar import Sidebar
 from report_view import ReportView
@@ -63,8 +64,8 @@ class AppLayout(ft.Row):
         elif route == "/categorias":
             return CategoryView(self.page, self.go_to_main_view_from_categories)
         elif route.startswith("/categorias/"):
-            category_id = route.split("/")[-1]  # Extraemos el ID de la categoría
-            return mainView(self.page, self.toggle_nav_rail, category_id)
+            category_id = route.split("/")[-1]
+            return CategoryArticleView(self.page, category=category_id)
         elif route.startswith("/report/"):
             try:
                 articulo_id = int(route.split("/")[-1])

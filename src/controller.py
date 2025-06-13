@@ -119,3 +119,36 @@ class InventoryController:
 
     def obtener_categorias(self):
         return self.db_manager.obtener_categorias()
+    
+    def generar_reporte_detallado(self, fecha_inicio: datetime.datetime, fecha_fin: datetime.datetime):
+        if fecha_inicio >= fecha_fin:
+            raise ValueError("La fecha de inicio debe ser anterior a la fecha de fin.")
+
+        todos_articulos = self.obtener_todos_articulos()
+        reporte = []
+
+        for articulo in todos_articulos:
+            registros = self.db_manager.obtener_registros_por_articulo(articulo['id'])
+            registros_periodo = [
+                r for r in registros if fecha_inicio <= r['fecha_hora'] <= fecha_fin
+            ]
+
+            entradas = sum(r['unidad'] for r in registros_periodo if r['entrada_salida'])
+            salidas = sum(r['unidad'] for r in registros_periodo if not r['entrada_salida'])
+
+            total_valor_entradas = sum(r['unidad'] * r['costo'] for r in registros_periodo if r['entrada_salida'])
+
+            costo_promedio = (total_valor_entradas / entradas) if entradas > 0 else 0
+            porcentaje_salida = (salidas / entradas * 100) if entradas > 0 else 0
+
+            reporte.append({
+                'articulo_id': articulo['id'],
+                'nombre': articulo['nombre'],
+                'categoria': articulo['categoria'],
+                'entradas': entradas,
+                'salidas': salidas,
+                'porcentaje_salida': round(porcentaje_salida, 2),
+                'costo_promedio': round(costo_promedio, 2)
+            })
+
+        return reporte

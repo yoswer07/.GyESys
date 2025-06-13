@@ -2,15 +2,22 @@ import datetime
 import flet as ft
 import pytz
 from controller import InventoryController
+from flet import FilePickerResultEvent
+from reportlab.pdfgen import canvas
 
 
 class ButtonGenerator:
-    def __init__(self, page, selected_row, toggle_sidebar_callback, on_refresh_table):
+    def __init__(self, page, selected_row, toggle_sidebar_callback, on_refresh_table, origin="principal", table_data=None):
         self.page = page
         self.selected_row = selected_row
         self.controller = InventoryController()
         self.toggle_sidebar_callback = toggle_sidebar_callback
         self.on_refresh_table = on_refresh_table
+        self.origin = origin
+        self.table_data = table_data or []
+        self.start_date = None
+        self.end_date = None
+
         self.date_picker_control = ft.DatePicker(
             first_date=datetime.datetime(year=2010, month=10, day=1),
             date_picker_mode=ft.DatePickerMode.DAY,
@@ -20,6 +27,48 @@ class ButtonGenerator:
             "Agrega la fecha",
             icon=ft.Icons.CALENDAR_MONTH,
             on_click=lambda e: page.open(self.date_picker_control),
+        )
+
+        self.start_date_picker = ft.DatePicker(
+            first_date=datetime.datetime(2010, 1, 1),
+            date_picker_mode=ft.DatePickerMode.DAY,
+            on_change=lambda e: setattr(self, "start_date", e.control.value),
+        )
+        self.end_date_picker = ft.DatePicker(
+            first_date=datetime.datetime(2010, 1, 1),
+            date_picker_mode=ft.DatePickerMode.DAY,
+            on_change=lambda e: setattr(self, "end_date", e.control.value),
+        )
+        self.file_picker = ft.FilePicker(on_result=self.on_file_selected)
+        self.page.overlay.append(self.file_picker)
+
+        self.selected_file_path = None
+
+        self.generate_pdf_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Generar Reporte PDF"),
+            content=ft.Column(
+                [
+                    ft.Text("Selecciona una fecha para guardar el PDF:"),
+                    ft.Row([
+                        ft.TextButton("Fecha inicio", on_click=lambda _: self.page.open(self.start_date_picker)),
+                        ft.TextButton("Fecha final", on_click=lambda _: self.page.open(self.end_date_picker)),
+                    ]),
+                    ft.TextButton(
+                        "Seleccionar ubicación",
+                        on_click=lambda _: self.file_picker.save_file(
+                            dialog_title="Guardar reporte PDF",
+                            file_name="reporte.pdf"
+                        )
+                    ),
+                ],
+                tight=True,
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: self.page.close(self.generate_pdf_dialog)),
+                ft.TextButton("Aceptar", on_click=self.generate_pdf),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
         )
         self.model_dlg = ft.AlertDialog(
             modal=True,
@@ -54,6 +103,15 @@ class ButtonGenerator:
 
     def generate_buttons(self):
         """Genera los botones de acción de la vista principal, con el estado actual de selected_row."""
+        reporte_detallado_button = ft.ElevatedButton(
+            "Reporte Detallado",
+            icon=ft.Icons.PICTURE_AS_PDF,
+            icon_color=ft.Colors.WHITE,
+            color=ft.Colors.WHITE,
+            width=150,
+            bgcolor={ft.ControlState.DEFAULT: ft.Colors.GREEN_200, ft.ControlState.HOVERED: ft.Colors.GREEN_400},
+            on_click=lambda e: self.page.open(self.generate_pdf_dialog),
+        )
         ver_button = ft.ElevatedButton(
             "Ver",
             icon=ft.Icons.REMOVE_RED_EYE_SHARP,
@@ -104,7 +162,7 @@ class ButtonGenerator:
             borrar_button.disabled = False
             ver_button.disabled = False
 
-        return [ver_button, crear_button, editar_button, borrar_button]
+        return [reporte_detallado_button, ver_button, crear_button, editar_button, borrar_button]
 
     def ver_articulo_reporte(self, e):
         """Handles the click event for the 'Ver' button to open the report view using routing."""
@@ -249,3 +307,57 @@ class ButtonGenerator:
                     open=True,
                 )
             )
+
+    def on_file_selected(self, e: FilePickerResultEvent):
+        if e.path:
+            self.selected_file_path = e.path if e.path.endswith(".pdf") else e.path + ".pdf"
+            print("Ruta seleccionada:", self.selected_file_path)
+
+    def generate_pdf(self, e):
+        if not self.selected_file_path:
+            self.page.open(ft.SnackBar(ft.Text("Por favor selecciona una ubicación para guardar el PDF."), open=True))
+            return
+
+        if not self.start_date or not self.end_date:
+            self.page.open(ft.SnackBar(ft.Text("Por favor selecciona ambas fechas."), open=True))
+            return
+
+        if self.start_date > self.end_date:
+            self.page.open(ft.SnackBar(ft.Text("La fecha de inicio debe ser menor o igual a la fecha final."), open=True))
+            return
+
+        c = canvas.Canvas(self.selected_file_path)
+        y = 800
+
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, y, f"Reporte Detallado: {self.start_date.strftime('%Y-%m-%d')} al {self.end_date.strftime('%Y-%m-%d')}")
+        y -= 30
+
+        registros = self.controller.generar_reporte_detallado(
+            self.start_date, self.end_date
+        )
+
+        # Filtrar los registros solo si estás en la vista de categoría
+        if self.origin == "categoria" and self.table_data:
+            ids_filtrados = {articulo["id"] for articulo in self.table_data}
+            registros = [r for r in registros if r["articulo_id"] in ids_filtrados]
+
+        for articulo in registros:
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(50, y, f"Artículo ID: {articulo['articulo_id']} - {articulo['nombre']} ({articulo['categoria']})")
+            y -= 20
+
+            c.setFont("Helvetica", 9)
+            c.drawString(60, y, f"Entradas: {articulo['entradas']}")
+            c.drawString(180, y, f"Salidas: {articulo['salidas']}")
+            c.drawString(300, y, f"% Salidas: {articulo['porcentaje_salida']}%")
+            c.drawString(440, y, f"Costo Promedio: {articulo['costo_promedio']:.2f}")
+            y -= 30
+
+            if y < 50:
+                c.showPage()
+                y = 800
+
+        c.save()
+        self.page.close(self.generate_pdf_dialog)
+        self.page.open(ft.SnackBar(ft.Text("Reporte detallado generado exitosamente."), open=True))

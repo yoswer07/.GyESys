@@ -13,9 +13,10 @@ class CategoryArticleView(ft.Column):
         self.margin_main_rigth = self.page.width * 0.015
         self.spacing = 10
         self.expand = True
+        self.article_data = []
         self.alignment = ft.MainAxisAlignment.CENTER
         self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        self.table_generator = TableGenerator()
+        self.table_generator = TableGenerator(self.controller)
 
         self.selected_row = None
         self.button_generator = ButtonGenerator(
@@ -23,6 +24,8 @@ class CategoryArticleView(ft.Column):
             selected_row=self.selected_row,
             toggle_sidebar_callback=self.go_back_to_categories,
             on_refresh_table=self.refresh_table,
+            origin="categoria",
+            table_data=self.article_data,
         )
 
         self.controls = [
@@ -36,7 +39,7 @@ class CategoryArticleView(ft.Column):
             ),
             ft.Row(controls=[
                 ft.Container(
-                    bgcolor=ft.Colors.BLUE_GREY,
+                    bgcolor="#ffb6c1",
                     content=ft.Column(
                         [
                             ft.Container(
@@ -87,13 +90,11 @@ class CategoryArticleView(ft.Column):
         action_buttons = self.button_generator.generate_buttons()
 
         # Actualiza la interfaz con los nuevos botones
-        self.controls[0].content = [
-            ft.Row(
-                alignment=ft.MainAxisAlignment.END,
-                spacing=10,
-                controls=action_buttons,
-            )
-        ]
+        self.controls[0].content = ft.Row(
+            alignment=ft.MainAxisAlignment.END,
+            spacing=10,
+            controls=action_buttons,
+        )
         self.page.update()
 
     def create_article_table(self):
@@ -101,18 +102,20 @@ class CategoryArticleView(ft.Column):
         articles = self.controller.obtener_articulos_por_categoria(self.category)
         updated_articles = []
         for article in articles:
-            cantidad_total = self.controller.calcular_cantidad_actual(article.id)
-            costo_promedio = self.controller.calcular_costo_promedio_articulo(article.id)
+            cantidad_total = self.controller.calcular_cantidad_actual(article["id"])
+            costo_promedio = self.controller.calcular_costo_promedio_articulo(article["id"])
             updated_articles.append(
                 {
-                    "id": article.id,
-                    "nombre": article.nombre,
-                    "categoria": article.categoria,
+                    "id": article["id"],
+                    "nombre": article["nombre"],
+                    "categoria": article["categoria"],
                     "cantidad": cantidad_total,
                     "costo": costo_promedio,
-                    "bar_code": article.bar_code,
+                    "bar_code": article["bar_code"],
                 }
             )
+        self.article_data = updated_articles
+        self.button_generator.table_data = updated_articles
 
         # Usamos el método `create_table` de TableGenerator para generar la tabla
         return self.table_generator.create_table(

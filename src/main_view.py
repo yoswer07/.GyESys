@@ -5,16 +5,19 @@ from button_generator import ButtonGenerator
 
 
 class mainView(ft.Column):
-    def __init__(self, page: ft.Page, toggle_sidebar_callback, category_id=None, *args, **kwargs):
+    def __init__(
+        self, page: ft.Page, toggle_sidebar_callback, category_id=None, *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.page = page
         self.controller = InventoryController()
         self.table_generator = TableGenerator(self.controller)
         self.selected_row = None
+        self.article_data = self.get_all_articles()
         self.margin_main_rigth = self.page.width * 0.015
         self.toggle_sidebar_callback = toggle_sidebar_callback
         self.category_id = category_id
-        
+
         self.inventory_table_container = ft.Container(
             bgcolor=ft.Colors.BLUE_GREY,
             content=ft.Column(
@@ -48,7 +51,12 @@ class mainView(ft.Column):
         )
 
         self.button_generator = ButtonGenerator(
-            self.page, self.selected_row, self.toggle_sidebar_callback, self.refresh_table
+            self.page,
+            self.selected_row,
+            self.toggle_sidebar_callback,
+            self.refresh_table,
+            origin="principal",
+            table_data=self.article_data,
         )
         action_buttons = self.button_generator.generate_buttons()
 
@@ -159,22 +167,28 @@ class mainView(ft.Column):
         updated_articles = []
         for article in articles:
             # Aquí accedemos a los atributos del objeto Articulo correctamente
-            cantidad_total = self.controller.calcular_cantidad_actual(article['id'])
-            costo_promedio = self.controller.calcular_costo_promedio_articulo(article['id'])
+            cantidad_total = self.controller.calcular_cantidad_actual(article["id"])
+            costo_promedio = self.controller.calcular_costo_promedio_articulo(
+                article["id"]
+            )
             updated_articles.append(
                 {
-                    "id": article['id'],
-                    "nombre": article['nombre'],
-                    "categoria": article['categoria'],
+                    "id": article["id"],
+                    "nombre": article["nombre"],
+                    "categoria": article["categoria"],
                     "cantidad": cantidad_total,
                     "costo": costo_promedio,
-                    "bar_code": article['bar_code'],
+                    "bar_code": article["bar_code"],
                 }
             )
 
         # Actualizamos la tabla de datos con los artículos de la categoría
         inventory_table = self.table_generator.create_table(
-            "main", self.page.width * 0.95, updated_articles, on_row_select=self.get_index
+            "main",
+            self.page.width * 0.95,
+            updated_articles,
+            on_row_select=self.get_index,
         )
         self.inventory_table_container.content.controls[0].content = inventory_table
+        self.article_data = updated_articles
         self.page.update()
