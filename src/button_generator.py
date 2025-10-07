@@ -18,6 +18,21 @@ class ButtonGenerator:
         self.start_date = None
         self.end_date = None
 
+        self.categoria_dropdown = ft.Dropdown(
+            label="Categoría",
+            options=[
+                ft.dropdown.Option(cat.nombre_categoria)
+                for cat in self.controller.obtener_categorias()
+            ],
+            width=200,
+        )
+
+        # Botón para nueva categoría
+        self.nueva_categoria_button = ft.TextButton(
+            "Nueva categoría",
+            on_click=lambda e: self.page.open(self.crear_categoria_dialog())
+        )
+
         self.date_picker_control = ft.DatePicker(
             first_date=datetime.datetime(year=2010, month=10, day=1),
             date_picker_mode=ft.DatePickerMode.DAY,
@@ -76,7 +91,7 @@ class ButtonGenerator:
             content=ft.Column(
                 controls=[
                     ft.TextField(label="Nombre", data="nombre"),
-                    ft.TextField(label="Categoria", data="categoria"),
+                    ft.Row([self.categoria_dropdown, self.nueva_categoria_button]),
                     ft.TextField(
                         label="Cantidad",
                         keyboard_type=ft.KeyboardType.NUMBER,
@@ -112,6 +127,10 @@ class ButtonGenerator:
             bgcolor={ft.ControlState.DEFAULT: ft.Colors.GREEN_200, ft.ControlState.HOVERED: ft.Colors.GREEN_400},
             on_click=lambda e: self.page.open(self.generate_pdf_dialog),
         )
+
+        if self.origin == "articulo":
+            return [reporte_detallado_button]
+
         ver_button = ft.ElevatedButton(
             "Ver",
             icon=ft.Icons.REMOVE_RED_EYE_SHARP,
@@ -235,7 +254,7 @@ class ButtonGenerator:
 
     def save_new_item(self, e):
         nombre = self.model_dlg.content.controls[0].value
-        categoria = self.model_dlg.content.controls[1].value
+        categoria = self.categoria_dropdown.value
         cantidad = (
             int(self.model_dlg.content.controls[2].value)
             if self.model_dlg.content.controls[2].value
@@ -342,6 +361,9 @@ class ButtonGenerator:
             ids_filtrados = {articulo["id"] for articulo in self.table_data}
             registros = [r for r in registros if r["articulo_id"] in ids_filtrados]
 
+        elif self.origin == "articulo" and self.selected_row:
+            registros = [r for r in registros if r["articulo_id"] == self.selected_row.id]
+
         for articulo in registros:
             c.setFont("Helvetica-Bold", 10)
             c.drawString(50, y, f"Artículo ID: {articulo['articulo_id']} - {articulo['nombre']} ({articulo['categoria']})")
@@ -361,3 +383,43 @@ class ButtonGenerator:
         c.save()
         self.page.close(self.generate_pdf_dialog)
         self.page.open(ft.SnackBar(ft.Text("Reporte detallado generado exitosamente."), open=True))
+
+    def crear_categoria_dialog(self):
+        # Primero, define el objeto del diálogo
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Crear nueva categoría"),
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        # Función auxiliar para cerrar la instancia específica del diálogo
+        def close_dialog(e):
+            self.page.close(dlg)
+            self.page.update()
+
+        # Función auxiliar para guardar los datos Y LUEGO cerrar el diálogo
+        def save_and_close(e):
+            self.guardar_nueva_categoria(nueva_categoria_field.value)
+            close_dialog(e) # Reutiliza la función de cierre
+
+        nueva_categoria_field = ft.TextField(label="Nombre de nueva categoría")
+
+        # Asigna el contenido y las acciones que ahora se refieren correctamente a 'dlg'
+        dlg.content = nueva_categoria_field
+        dlg.actions = [
+            ft.TextButton("Cancelar", on_click=close_dialog),
+            ft.TextButton("Guardar", on_click=save_and_close),
+        ]
+        
+        return dlg
+    
+    def guardar_nueva_categoria(self, nombre):
+        if nombre.strip():
+            self.controller.crear_categoria(nombre.strip())
+            # Recargar opciones del dropdown
+            self.categoria_dropdown.options = [
+                ft.dropdown.Option(cat.nombre_categoria)
+                for cat in self.controller.obtener_categorias()
+            ]
+            self.categoria_dropdown.value = nombre.strip()  # Seleccionar la nueva
+            self.categoria_dropdown.update()

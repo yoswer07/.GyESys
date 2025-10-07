@@ -3,6 +3,7 @@ import flet as ft
 import pytz
 from controller import InventoryController
 from table_generator import TableGenerator
+from button_generator import ButtonGenerator
 
 
 class ReportView(ft.Column):
@@ -15,9 +16,20 @@ class ReportView(ft.Column):
         self.table_generator = TableGenerator(self.controller)
         self.on_volver = on_volver
         self.articulo_id = articulo_id
+
+        self.articulo_actual = self.controller.obtener_articulo(self.articulo_id)
+
         self.report_data = self.get_report_data()
         self.report_table = self.create_report_table()
         self.margin_main_rigth = self.page.width * 0.015
+
+        self.button_generator = ButtonGenerator(
+            page=self.page,
+            selected_row=self.articulo_actual, # Pasamos el artículo completo
+            toggle_sidebar_callback=self.go_back_to_main, # No se usa aquí, pero necesita un valor
+            on_refresh_table=self.refresh_data, # Una función para refrescar la vista
+            origin="articulo" # ¡La clave para que muestre solo el botón de reporte!
+        )
 
         self.date_picker_control = ft.DatePicker(
             first_date=datetime.datetime(year=2010, month=10, day=1),
@@ -46,7 +58,6 @@ class ReportView(ft.Column):
             on_change=self.on_entrada_salida_change,
         )
 
-
         self.model_dlg = ft.AlertDialog(
             modal=True,
             title=ft.Text("Registro"),
@@ -73,6 +84,8 @@ class ReportView(ft.Column):
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
+        self.report_buttons = self.button_generator.generate_buttons()
+
         self.controls = [
             ft.Container(
                 margin=ft.margin.only(top=5, right=15),
@@ -80,6 +93,7 @@ class ReportView(ft.Column):
                     alignment=ft.MainAxisAlignment.END,
                     spacing=10,
                     controls=[
+                        *self.report_buttons,
                         ft.ElevatedButton(
                             "Volver",
                             icon=ft.Icons.ARROW_BACK,
@@ -278,3 +292,10 @@ class ReportView(ft.Column):
         self.page.open(self.model_dlg)
         self.page.update()
 
+    def refresh_data(self):
+        """Refresca la tabla de registros."""
+        self.report_data = self.get_report_data()
+        self.report_table = self.create_report_table()
+        # Esta línea es un poco compleja, asegúrate de que la ruta al contenido de la tabla sea correcta
+        self.controls[1].controls[0].content.controls[0].content = self.report_table
+        self.update()
