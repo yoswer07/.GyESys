@@ -121,7 +121,7 @@ class ReportView(ft.Column):
             ),
             ft.Row(controls=[
                 ft.Container(
-                    bgcolor=ft.Colors.BLUE_GREY,
+                    bgcolor="#FFE1E6",
                     content=ft.Column(
                         [
                             ft.Container(

@@ -19,7 +19,7 @@ class mainView(ft.Column):
         self.category_id = category_id
 
         self.inventory_table_container = ft.Container(
-            bgcolor=ft.Colors.BLUE_GREY,
+            bgcolor='#FFE1E6',
             content=ft.Column(
                 [
                     ft.Container(

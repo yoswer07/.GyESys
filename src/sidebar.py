@@ -32,7 +32,7 @@ class Sidebar(ft.Container):
             label_type=ft.NavigationRailLabelType.ALL,
             on_change=self.top_nav_change,
             destinations=self.top_nav_items,
-            bgcolor=ft.Colors.BLUE_GREY,
+            bgcolor='#FFE1E6',
             extended=True,
             height=500,
         )
@@ -63,7 +63,7 @@ class Sidebar(ft.Container):
             padding=ft.padding.all(15),
             margin=ft.margin.all(0),
             width=250,
-            bgcolor=ft.Colors.BLUE_GREY,
+            bgcolor='#FFE1E6',
             visible=self.nav_rail_visible,
         )
 

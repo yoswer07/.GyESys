@@ -39,7 +39,7 @@ class CategoryArticleView(ft.Column):
             ),
             ft.Row(controls=[
                 ft.Container(
-                    bgcolor="#ffb6c1",
+                    bgcolor="#FFE1E6",
                     content=ft.Column(
                         [
                             ft.Container(
